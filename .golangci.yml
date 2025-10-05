@@ -16,14 +16,12 @@ linters-settings:
           - "!$test"
         allow:
           - $gostd
-          - golang.org/x/example/hello/reverse
       Test:
         files:
           - $test
         allow:
           - $gostd
           - github.com/stretchr/testify
-          - golang.org/x/example/hello/reverse
 issues:
   exclude-rules:
     - path: _test\.go
