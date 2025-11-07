@@ -1,8 +1,12 @@
-package hw05parallelexecution
+package main
 
 import (
 	"errors"
+	"fmt"
+	"math/rand"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
@@ -63,4 +67,63 @@ func Run(tasks []Task, n, m int) error {
 
 	// Если ранее не вышли из функции, вернув ErrErrorsLimitExceeded, то всё хорошо, возвращаем nil:
 	return nil
+}
+
+func main() {
+	fmt.Println("========== TEST 1. if were errors in first M tasks, than finished not more N+M tasks ==========")
+	tasksCount1 := 50
+	tasks1 := make([]Task, 0, tasksCount1)
+
+	var runTasksCount1 int32
+
+	for i := 0; i < tasksCount1; i++ {
+		err := fmt.Errorf("error from task %d", i)
+		tasks1 = append(tasks1, func() error {
+			time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
+			atomic.AddInt32(&runTasksCount1, 1)
+			fmt.Println("error:", err)
+			return err
+		})
+	}
+
+	workersCount1 := 10
+	maxErrorsCount1 := 3
+	err1 := Run(tasks1, workersCount1, maxErrorsCount1)
+	if err1 != nil {
+		fmt.Println("error:", err1)
+	}
+
+	fmt.Println("========== TEST 2. tasks without errors ==========")
+	tasksCount2 := 50
+	tasks2 := make([]Task, 0, tasksCount2)
+
+	var runTasksCount2 int32
+	var sumTime2 time.Duration
+
+	for i := 0; i < tasksCount2; i++ {
+		taskSleep := time.Millisecond * time.Duration(rand.Intn(100))
+		sumTime2 += taskSleep
+
+		tasks2 = append(tasks2, func() error {
+			time.Sleep(taskSleep)
+			atomic.AddInt32(&runTasksCount2, 1)
+			return nil
+		})
+	}
+
+	workersCount2 := 5
+	maxErrorsCount2 := 1
+
+	start := time.Now()
+	err2 := Run(tasks2, workersCount2, maxErrorsCount2)
+	elapsedTime2 := time.Since(start)
+	if err2 == nil {
+		fmt.Println("OK")
+	}
+	fmt.Println("TASKS COUNT:", tasksCount2)
+	fmt.Println("RUN TASKS COUNT:", runTasksCount2)
+	fmt.Println("(all tasks must be completed)")
+	fmt.Println("ELAPSED TIME:", elapsedTime2)
+	fmt.Println("SUM TIME:", sumTime2)
+	fmt.Println("(elapsed time must be less or equal than one half of sum time)")
 }
