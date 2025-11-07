@@ -50,12 +50,46 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("purge logic", func(t *testing.T) {
-		// Write me
+		// Проверим на выталкивание из кэша, размер будет 3:
+		c := NewCache(3)
+
+		// Наполняем кэш:
+		wasInCache := c.Set("page0block0", "something")
+		require.False(t, wasInCache)
+		wasInCache = c.Set("page3block7", "aaa")
+		require.False(t, wasInCache)
+		wasInCache = c.Set("page5block4", "bbb")
+		require.False(t, wasInCache)
+
+		// Проверим на выталкивание по превышению размера:
+		wasInCache = c.Set("page6block2", "ссс")
+		require.False(t, wasInCache)
+		// Теперь элемент page0block0 должен отсутствовать:
+		v, ok := c.Get("page0block0")
+		require.False(t, ok)
+		require.Nil(t, v)
+
+		// Проверим на выталкивание наиболее давно используемого элемента:
+		wasInCache = c.Set("page6block2", "new_val_c")
+		require.True(t, wasInCache)
+		wasInCache = c.Set("page5block4", "new_val_b")
+		require.True(t, wasInCache)
+		wasInCache = c.Set("page3block7", "new_val_a")
+		require.True(t, wasInCache)
+		v, ok = c.Get("page6block2")
+		require.True(t, ok)
+		require.Equal(t, "new_val_c", v)
+		wasInCache = c.Set("page7block7", "ggg")
+		require.False(t, wasInCache)
+		// Теперь элемент page5block4 должен отсутствовать:
+		v, ok = c.Get("page5block4")
+		require.False(t, ok)
+		require.Nil(t, v)
 	})
 }
 
-func TestCacheMultithreading(t *testing.T) {
-	t.Skip() // Remove me if task with asterisk completed.
+func TestCacheMultithreading(_ *testing.T) {
+	// t.Skip() // Remove me if task with asterisk completed.
 
 	c := NewCache(10)
 	wg := &sync.WaitGroup{}
