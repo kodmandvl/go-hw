@@ -13,10 +13,10 @@ type Cache interface {
 }
 
 type lruCache struct {
+	lock     sync.Mutex
 	capacity int
 	queue    List
 	items    map[Key]*ListItem
-	lock     sync.Mutex
 }
 
 func NewCache(capacity int) Cache {
