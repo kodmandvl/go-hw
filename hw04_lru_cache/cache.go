@@ -16,15 +16,15 @@ type lruCache struct {
 	capacity int
 	queue    List
 	items    map[Key]*ListItem
-	lock     *sync.Mutex
+	lock     sync.Mutex
 }
 
 func NewCache(capacity int) Cache {
 	return &lruCache{
+		lock:     sync.Mutex{},
 		capacity: capacity,
 		queue:    NewList(),
 		items:    make(map[Key]*ListItem, capacity),
-		lock:     new(sync.Mutex),
 	}
 }
 

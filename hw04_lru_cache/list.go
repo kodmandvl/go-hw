@@ -104,9 +104,9 @@ func (l *list) Remove(i *ListItem) {
 		// Тогда теперь следующий элемент будет первым:
 		l.listBegin = i.Next
 		// и у него не будет предыдущего элемента:
-		if l.listBegin != nil {
-			l.listBegin.Prev = nil
-		}
+		// if l.listBegin != nil {
+		//	l.listBegin.Prev = nil
+		// }
 	} else {
 		// Иначе следующий у предыдущего - это следующий у удаляемого
 		// (убрали удаляемый элемент из цепочки):
@@ -118,9 +118,9 @@ func (l *list) Remove(i *ListItem) {
 		// Тогда теперь предыдущий элемент будет последним:
 		l.listEnd = i.Prev
 		// и у него не будет следующего элемента:
-		if l.listEnd != nil {
-			l.listEnd.Next = nil
-		}
+		// if l.listEnd != nil {
+		//	l.listEnd.Next = nil
+		// }
 	} else {
 		// Иначе предыдущий у следующего - это предыдущий у удаляемого
 		// (убрали удаляемый элемент из цепочки):
