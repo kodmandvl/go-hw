@@ -28,8 +28,7 @@ func Run(tasks []Task, n, m int) error {
 	for i := 0; i < n; i++ {
 		wg.Add(1) // Добавляем в WaitGroup
 		go func() {
-			defer wg.Done()  // Через defer в конце выполнения i-ой горутины уменьшаем счётчик WaitGroup
-			itsOver := false // Флажок окончания работ из-за превышения числа ошибок (больше или равно m)
+			defer wg.Done() // Через defer в конце выполнения i-ой горутины уменьшаем счётчик WaitGroup
 			// Получаем таски из слайса тасков:
 			for {
 				// Манипуляции с индексом слайса проводим под защитой (через mutex):
@@ -40,19 +39,19 @@ func Run(tasks []Task, n, m int) error {
 				if i >= tLen {
 					return
 				}
-				e := tasks[i]()
 				// Манипуляции со счётчиком ошибок проводим под защитой (через mutex):
 				lockCnt.Lock()
 				if cnt >= m {
-					itsOver = true
+					lockCnt.Unlock()
+					return
 				}
+				lockCnt.Unlock()
+				e := tasks[i]()
+				lockCnt.Lock()
 				if e != nil {
 					cnt++
 				}
 				lockCnt.Unlock()
-				if itsOver {
-					return
-				}
 			}
 		}()
 	}
