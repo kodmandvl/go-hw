@@ -1,0 +1,75 @@
+// Комментарий преподавателя:
+
+// "В данном случае использование буферезированного канала неизвестного размера не оправдано.
+// Это и лишние расходы памяти и трата времени на копирование тасков из слайса в канал.
+// По сути его можно заменить потокобезопасный index для слайса и такой расклад будет работать лучше.
+// Поэтому за такое решение поставить более 8 баллов не смогу, в идеале тут должен быть не буферезированый канал."
+
+// Поэтому я оставил здесь эту версию просто для истории, как делать не надо.
+
+package hw05parallelexecution
+
+import (
+	"errors"
+	"sync"
+)
+
+var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
+
+type Task func() error
+
+// Run starts tasks in n goroutines and stops its work when receiving m errors from tasks.
+func Run(tasks []Task, n, m int) error {
+	if m <= 0 {
+		// Значение m <= 0 трактуется на усмотрение программиста. Выбираем вариант:
+		// считать это как "максимум 0 ошибок", значит функция всегда будет возвращать ErrErrorsLimitExceeded;
+		return ErrErrorsLimitExceeded
+	}
+
+	wg := sync.WaitGroup{}                   // WaitGroup для n горутин и ожидания их завершения
+	lock := sync.Mutex{}                     // Mutex для защиты счётчика ошибок
+	tasksChan := make(chan Task, len(tasks)) // Канал тасков с размером буфера, равным размеру слайса тасков
+	var cnt int                              // счётчик ошибок
+
+	// Таски из слайса тасок в канал тасок:
+	for _, t := range tasks {
+		tasksChan <- t
+	}
+
+	// Цикл запуска n горутин:
+	for i := 0; i < n; i++ {
+		wg.Add(1) // Добавляем в WaitGroup
+		go func() {
+			defer wg.Done()  // Через defer в конце выполнения i-ой горутины уменьшаем счётчик WaitGroup
+			itsOver := false // Флажок окончания работ из-за превышения числа ошибок (больше или равно m)
+			// Получаем таски из канала тасков:
+			for tc := range tasksChan {
+				e := tc()
+				// Манипуляции со счётчиком ошибок проводим под защитой (через mutex):
+				lock.Lock()
+				if cnt >= m {
+					itsOver = true
+				}
+				if e != nil {
+					cnt++
+				}
+				lock.Unlock()
+				if itsOver {
+					return
+				}
+			}
+		}()
+	}
+
+	close(tasksChan) // Закрытие канала тасок
+
+	wg.Wait() // Ожидание окончания выполнения n горутин
+
+	// Если было превышено m, возвращаем ошибку ErrErrorsLimitExceeded:
+	if cnt >= m {
+		return ErrErrorsLimitExceeded
+	}
+
+	// Если ранее не вышли из функции, вернув ErrErrorsLimitExceeded, то всё хорошо, возвращаем nil:
+	return nil
+}
