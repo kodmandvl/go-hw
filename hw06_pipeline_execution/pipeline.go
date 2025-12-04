@@ -14,7 +14,9 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 	}
 
 	for _, stage := range stages {
-		in = runStage(done, stage(in))
+		if stage != nil {
+			in = runStage(done, stage(in))
+		}
 	}
 	return in
 }
@@ -28,6 +30,7 @@ func runStage(done In, in In) Out {
 			close(outCh)
 			//nolint:all
 			for range in {
+				// для TestAllStageStop/done_case
 			}
 		}()
 		for {
