@@ -13,12 +13,15 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 		return in
 	}
 
+	curCh := in
+
 	for _, stage := range stages {
 		if stage != nil {
-			in = runStage(done, stage(in))
+			stageOut := stage(curCh)
+			curCh = runStage(done, stageOut)
 		}
 	}
-	return in
+	return curCh
 }
 
 // Функция обработки для стейджа.
