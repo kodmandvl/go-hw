@@ -1,0 +1,39 @@
+// from https://github.com/cheggaaa/pb/blob/master/README.md
+
+package main
+
+import (
+	"fmt"
+	"time"
+
+	//nolint:depguard
+	"github.com/cheggaaa/pb/v3" // Progress Bar
+)
+
+func main() {
+	// count := 100000
+	count := 10
+
+	// create and start new bar
+	bar := pb.StartNew(count)
+
+	// start bar from 'default' template
+	// bar := pb.Default.Start(count)
+
+	// start bar from 'simple' template
+	// bar := pb.Simple.Start(count)
+
+	// start bar from 'full' template
+	// bar := pb.Full.Start(count)
+
+	fmt.Println(time.Now())
+	for i := 0; i < count; i++ {
+		bar.Increment()
+		// time.Sleep(time.Millisecond)
+		time.Sleep(time.Second)
+	}
+	fmt.Println(time.Now())
+
+	// finish bar
+	bar.Finish()
+}

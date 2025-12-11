@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 )
 
 var (
@@ -16,7 +17,23 @@ func init() {
 	flag.Int64Var(&offset, "offset", 0, "offset in input file")
 }
 
+// Example:
+// go run . -from in.log -to out.log -offset 0 -limit 0
+// cmp out.log in.log
+// go run . -from in.log -to out.log -offset 10 -limit 20
+
 func main() {
 	flag.Parse()
-	// Place your code here.
+
+	if from == "" || to == "" {
+		fmt.Println("Usage of hw07_file_copying: -from <src> -to <dest> [-offset <num>] [-limit <num>]")
+		return
+	}
+
+	if err := Copy(from, to, offset, limit); err != nil {
+		fmt.Println("Error:", err.Error())
+		return
+	}
+
+	fmt.Println("Copied from", from, "to", to, "( offset", offset, ", limit", limit, "): [OK]")
 }
