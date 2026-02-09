@@ -103,8 +103,8 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-// Ошибочные кейсы (ошибки валидации, ошибка компиляции regexp, ошибка в теге).
-func TestValidate2(t *testing.T) {
+// Ошибки валидации.
+func TestValidateValidationErrors(t *testing.T) {
 	tests := []struct {
 		in          interface{}
 		expectedErr error
@@ -204,30 +204,6 @@ func TestValidate2(t *testing.T) {
 				},
 			},
 		},
-		{
-			in: BadStruct1{
-				Name:  "Ivan Ivanov",
-				Email: "ivanivanov@google.com",
-			},
-			expectedErr: ValidationErrors{
-				ValidationError{
-					Field: "Name",
-					Err:   fmt.Errorf("%w: qwerty", ErrInvalidTag),
-				},
-			},
-		},
-		{
-			in: BadStruct2{
-				Name:  "Ivan Ivanov",
-				Email: "ivanivanov@google.com",
-			},
-			expectedErr: ValidationErrors{
-				ValidationError{
-					Field: "Email",
-					Err:   fmt.Errorf("%w: ^[a-z)$", ErrInvalidRegexp),
-				},
-			},
-		},
 	}
 
 	for i, tt := range tests {
@@ -244,8 +220,8 @@ func TestValidate2(t *testing.T) {
 	}
 }
 
-// Ошибочные кейсы (ошибка при проверке, что интерфейс - не структура).
-func TestValidate3(t *testing.T) {
+// Программные ошибки (ошибка при проверке, что интерфейс - не структура; ошибка компиляции regexp; ошибка в теге).
+func TestValidateProgramErrors(t *testing.T) {
 	SomeMap := map[string]string{
 		"A": "Atomicity",
 		"C": "Consistency",
@@ -275,6 +251,20 @@ func TestValidate3(t *testing.T) {
 			in:          iv,
 			expectedErr: ErrNotStruct,
 		},
+		{
+			in: BadStruct1{
+				Name:  "Ivan Ivanov",
+				Email: "ivanivanov@google.com",
+			},
+			expectedErr: fmt.Errorf("%w: qwerty", ErrInvalidTag),
+		},
+		{
+			in: BadStruct2{
+				Name:  "Ivan Ivanov",
+				Email: "ivanivanov@google.com",
+			},
+			expectedErr: fmt.Errorf("%w: ^[a-z)$", ErrInvalidRegexp),
+		},
 	}
 
 	for i, tt := range tests {
@@ -282,7 +272,12 @@ func TestValidate3(t *testing.T) {
 			tt := tt
 			t.Parallel()
 			err := Validate(tt.in)
-			require.ErrorIs(t, err, ErrNotStruct)
+			// Проверяем программные ошибки по тексту.
+			require.EqualError(t, err, tt.expectedErr.Error())
+			// В случае первых 4 примеров (когда интерфейс - не структура) также проверим по ErrorIs.
+			if i <= 3 {
+				require.ErrorIs(t, err, tt.expectedErr)
+			}
 		})
 	}
 }

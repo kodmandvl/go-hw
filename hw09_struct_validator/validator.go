@@ -84,6 +84,10 @@ func Validate(v interface{}) error {
 				if errors.As(err, &vErrs) {
 					errs = append(errs, vErrs...)
 				} else {
+					// Иначе проверяем, является ли ошибка программной (ErrInvalidTag или ErrInvalidRegexp)
+					if errors.Is(err, ErrInvalidTag) || errors.Is(err, ErrInvalidRegexp) {
+						return err // Возвращаем программную ошибку напрямую
+					}
 					// Иначе создаем ValidationError для текущего поля.
 					errs = append(errs, ValidationError{
 						Field: field.Name,
