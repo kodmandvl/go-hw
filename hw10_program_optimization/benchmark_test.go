@@ -1,6 +1,8 @@
 //go:build mybench
 // +build mybench
 
+// Install benchstat:
+// go install golang.org/x/perf/cmd/benchstat@latest
 // Run benchmark test before changes:
 // go test . -bench=BenchmarkGetDomainStat -benchmem -tags mybench -count 10 > bench_before.txt
 // Run benchmark test after changes:
