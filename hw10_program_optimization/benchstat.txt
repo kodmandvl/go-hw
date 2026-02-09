@@ -1,0 +1,15 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/kodmandvl/go-hw/hw10_program_optimization
+cpu: Intel(R) Core(TM) i5-8257U CPU @ 1.40GHz
+                │ bench_before.txt │           bench_after.txt           │
+                │      sec/op      │   sec/op     vs base                │
+GetDomainStat-8     148596.9µ ± 2%   191.4µ ± 3%  -99.87% (p=0.000 n=10)
+
+                │ bench_before.txt │           bench_after.txt            │
+                │       B/op       │     B/op      vs base                │
+GetDomainStat-8   133011.01Ki ± 0%   46.39Ki ± 0%  -99.97% (p=0.000 n=10)
+
+                │ bench_before.txt │          bench_after.txt           │
+                │    allocs/op     │ allocs/op   vs base                │
+GetDomainStat-8     1701562.0 ± 0%   665.0 ± 0%  -99.96% (p=0.000 n=10)

@@ -1,0 +1,16 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/kodmandvl/go-hw/hw10_program_optimization
+cpu: Intel(R) Core(TM) i5-8257U CPU @ 1.40GHz
+BenchmarkGetDomainStat-8   	    5806	    190829 ns/op	   47505 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    5994	    188290 ns/op	   47504 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    6006	    186123 ns/op	   47504 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    6153	    187043 ns/op	   47505 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    6294	    186532 ns/op	   47504 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    6254	    191948 ns/op	   47504 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    5595	    197302 ns/op	   47504 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    5905	    194822 ns/op	   47504 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    5889	    214083 ns/op	   47504 B/op	     665 allocs/op
+BenchmarkGetDomainStat-8   	    6042	    194534 ns/op	   47504 B/op	     665 allocs/op
+PASS
+ok  	github.com/kodmandvl/go-hw/hw10_program_optimization	12.141s

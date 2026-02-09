@@ -1,10 +1,10 @@
 package hw10programoptimization
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 )
 
@@ -20,47 +20,45 @@ type User struct {
 
 type DomainStat map[string]int
 
+type UserEmail struct {
+	Email string `json:"email"`
+}
+
 func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
-	u, err := getUsers(r)
-	if err != nil {
-		return nil, fmt.Errorf("get users error: %w", err)
-	}
-	return countDomains(u, domain)
-}
+	resMap := make(DomainStat)
+	scanner := bufio.NewScanner(r)
+	suffix := "." + domain
 
-type users [100_000]User
-
-func getUsers(r io.Reader) (result users, err error) {
-	content, err := io.ReadAll(r)
-	if err != nil {
-		return
-	}
-
-	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
-		var user User
-		if err = json.Unmarshal([]byte(line), &user); err != nil {
-			return
-		}
-		result[i] = user
-	}
-	return
-}
-
-func countDomains(u users, domain string) (DomainStat, error) {
-	result := make(DomainStat)
-
-	for _, user := range u {
-		matched, err := regexp.Match("\\."+domain, []byte(user.Email))
-		if err != nil {
-			return nil, err
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue // Пропускаем пустую строку и переходим к следующей
 		}
 
-		if matched {
-			num := result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])]
-			num++
-			result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])] = num
+		var uEmail UserEmail
+		if err := json.Unmarshal(line, &uEmail); err != nil {
+			continue // Пропускаем некорректную строку и переходим к следующей
 		}
+
+		email := uEmail.Email
+		if !strings.HasSuffix(email, suffix) {
+			continue // Указанный суффикс не нашли - переходим к следующей строке
+		}
+
+		// Извлекаем домен
+		ind := strings.LastIndex(email, "@")
+		if ind == -1 {
+			continue // Несмотря на то, что мы ранее нашли суффикс в строке, в ней нет "@" в имейле, переходим к следующей строке
+		}
+
+		// Добавляем доменное имя имейла в реузультирующую мапу и инкрементируем
+		domainName := strings.ToLower(email[ind+1:])
+		resMap[domainName]++
 	}
-	return result, nil
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error: %w", err)
+	}
+
+	return resMap, nil
 }
