@@ -63,3 +63,55 @@ func TestTelnetClient(t *testing.T) {
 		wg.Wait()
 	})
 }
+
+func TestTelnetClient_ConnectionError(t *testing.T) {
+	timeout := 2 * time.Second
+
+	in := &bytes.Buffer{}
+	out := &bytes.Buffer{}
+
+	client := NewTelnetClient("127.0.0.1:65534", timeout, io.NopCloser(in), out)
+
+	err := client.Connect()
+	require.EqualError(t, err, "dial tcp 127.0.0.1:65534: connect: connection refused")
+	require.NoError(t, client.Close())
+}
+
+func TestTelnetClient_CloseWithoutConnect(t *testing.T) {
+	// Close должен быть безопасен до Connect и при повторном вызове.
+	client := NewTelnetClient(
+		"127.0.0.1:1",
+		time.Second,
+		io.NopCloser(bytes.NewBuffer(nil)),
+		&bytes.Buffer{},
+	)
+
+	require.NoError(t, client.Close())
+	require.NoError(t, client.Close())
+}
+
+func TestTelnetClient_SendWithoutConnect(t *testing.T) {
+	// Попытка отправки без соединения должна вернуть ожидаемую ошибку.
+	client := NewTelnetClient(
+		"127.0.0.1:1",
+		time.Second,
+		io.NopCloser(bytes.NewBufferString("ping")),
+		&bytes.Buffer{},
+	)
+
+	err := client.Send()
+	require.ErrorIs(t, err, errNotConnected)
+}
+
+func TestTelnetClient_ReceiveWithoutConnect(t *testing.T) {
+	// Попытка чтения без соединения должна вернуть ожидаемую ошибку.
+	client := NewTelnetClient(
+		"127.0.0.1:1",
+		time.Second,
+		io.NopCloser(bytes.NewBuffer(nil)),
+		&bytes.Buffer{},
+	)
+
+	err := client.Receive()
+	require.ErrorIs(t, err, errNotConnected)
+}
