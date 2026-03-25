@@ -2,29 +2,30 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/spf13/pflag"
 )
 
 func main() {
 	// Читаем таймаут подключения из флага.
-	timeout := flag.Duration("timeout", 10*time.Second, "timeout for connect")
-	flag.Parse()
+	timeout := pflag.Duration("timeout", 10*time.Second, "timeout for connect")
+	pflag.Parse()
 	// fmt.Println("timeout: " + timeout.String())
 
 	// Ожидаем аргументы host и port.
-	if flag.NArg() < 2 {
+	if pflag.NArg() < 2 {
 		fmt.Println("Usage: go-telnet [--timeout=<your_desired_timeout>] <host> <port>")
 		os.Exit(1)
 	}
 
-	host := flag.Arg(0)
-	port := flag.Arg(1)
+	host := pflag.Arg(0)
+	port := pflag.Arg(1)
 	address := host + ":" + port
 	// fmt.Println("address: " + address)
 
