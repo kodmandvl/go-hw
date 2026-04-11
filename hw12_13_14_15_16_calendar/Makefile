@@ -18,7 +18,9 @@ RABBIT_PORT ?= 5672
 RABBIT_PORT_UI ?= 15672
 RABBIT_CONTAINER := rabbitmq
 
-
+# for test:
+# docker run -d --name postgres-calendar --hostname postgres-calendar -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=backend -p 127.0.0.1:5435:5432 docker.io/library/postgres:16.13-alpine3.22
+# psql postgres://postgres:password@localhost:5435/backend
 run-postgres:
 	docker run -d --name $(POSTGRES_CONTAINER) \
 	-e POSTGRES_USER=$(POSTGRES_USER) \
@@ -36,11 +38,14 @@ run-rabbit:
 	-e RABBITMQ_DEFAULT_PASS=$(RABBIT_PASSWORD) \
 	rabbitmq:management
 
+# for test:
+# go build -v -o ./bin/calendar ./cmd/calendar && echo BUILD_OK
+# ./bin/calendar
 build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
 
 run: build
-	$(BIN) -config ./configs/config.toml
+	$(BIN) --config ./configs/config.yaml
 
 build-img:
 	docker build \
@@ -55,10 +60,10 @@ version: build
 	$(BIN) version
 
 test:
-	go test -race ./internal/... ./pkg/...
+	go test -race ./internal/...
 
 install-lint-deps:
-	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.57.2
+	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.63.4
 
 lint: install-lint-deps
 	golangci-lint run ./...
