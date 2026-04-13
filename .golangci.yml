@@ -17,12 +17,20 @@ linters-settings:
         allow:
           - $gostd
           - github.com/spf13/pflag
+          - github.com/spf13/viper
+          - github.com/google/uuid
+          - github.com/lib/pq
+          - github.com/pressly/goose
+          - golang.org/x/exp
+          - github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar
       Test:
         files:
           - $test
         allow:
           - $gostd
           - github.com/stretchr/testify
+          - github.com/google/uuid
+          - github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar
 issues:
   exclude-rules:
     - path: _test\.go
