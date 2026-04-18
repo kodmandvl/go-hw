@@ -22,6 +22,8 @@ linters-settings:
           - github.com/lib/pq
           - github.com/pressly/goose
           - golang.org/x/exp
+          - google.golang.org/grpc
+          - google.golang.org/protobuf
           - github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar
       Test:
         files:
@@ -30,6 +32,8 @@ linters-settings:
           - $gostd
           - github.com/stretchr/testify
           - github.com/google/uuid
+          - google.golang.org/grpc
+          - google.golang.org/protobuf
           - github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar
 issues:
   exclude-rules:

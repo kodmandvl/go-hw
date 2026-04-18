@@ -30,6 +30,15 @@ run-postgres:
 	-v postgres-data:/var/lib/postgresql/data \
 	postgres:latest
 
+run-postgres-16-in-podman:
+	podman run -d --name $(POSTGRES_CONTAINER) \
+	-e POSTGRES_USER=$(POSTGRES_USER) \
+	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+	-e POSTGRES_DB=$(POSTGRES_DB) \
+	-p $(POSTGRES_PORT):5432 \
+	-v postgres-data:/var/lib/postgresql/data \
+	docker.io/library/postgres:16.13-alpine3.22
+
 run-rabbit:
 	docker run -d --name $(RABBIT_CONTAINER) \
 	-p $(RABBIT_PORT):5672 \
@@ -68,4 +77,7 @@ install-lint-deps:
 lint: install-lint-deps
 	golangci-lint run ./...
 
-.PHONY: build run build-img run-img version test lint
+generate:
+	go generate ./...
+
+.PHONY: build run build-img run-img version test lint generate

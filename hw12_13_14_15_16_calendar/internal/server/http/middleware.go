@@ -8,7 +8,8 @@ import (
 	"github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/server/http/response"
 )
 
-func loggingMiddleware(next http.Handler, logger Logger) http.Handler {
+// LoggingMiddleware — обёртка для тестов и для Server.Run (формат строки как в ДЗ №12).
+func LoggingMiddleware(next http.Handler, logger Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := response.NewResponseWriter(w)
 		initTime := time.Now()

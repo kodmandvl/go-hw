@@ -53,21 +53,19 @@ func TestCreateAndGetAndUpdateEvent(t *testing.T) {
 }
 
 func TestUpdateWithBusyTimeEvent(t *testing.T) {
-	time := randomTimeGenerator()
-	id := uuid.New()
-
+	t1 := randomTimeGenerator()
+	t2 := randomTimeGenerator()
 	st := New()
 
-	event := &storage.Event{
-		ID:       id,
-		Title:    "Event title",
-		DateTime: time,
-	}
-
-	err := st.CreateEvent(context.Background(), event)
+	a := &storage.Event{ID: uuid.New(), Title: "a", DateTime: t1}
+	b := &storage.Event{ID: uuid.New(), Title: "b", DateTime: t2}
+	err := st.CreateEvent(context.Background(), a)
+	assert.NoError(t, err)
+	err = st.CreateEvent(context.Background(), b)
 	assert.NoError(t, err)
 
-	err = st.UpdateEvent(context.Background(), id, &storage.Event{Title: "1", DateTime: time})
+	// Переносим b на время a — слот занят другим событием.
+	err = st.UpdateEvent(context.Background(), b.ID, &storage.Event{Title: "b-moved", DateTime: t1})
 	assert.Equal(t, storage.ErrEventDateTimeIsBusy, err)
 }
 

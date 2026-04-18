@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package calendar.v1;
+
+option go_package = "github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/pb/calendar/v1;calendarv1";
+
+// Event — сущность календаря; вынесена в отдельное сообщение (message), т.к. повторяется во многих ответах.
+message Event {
+  string id = 1;
+  string title = 2;
+  // date_time — начало события.
+  string date_time = 3;
+  // duration — длительность в секундах.
+  int64 duration = 4;
+  string description = 5;
+  string user_id = 6;
+  // notification_time — момент уведомления (пустая строка, если не задано).
+  string notification_time = 7;
+}
+
+message CreateEventRequest {
+  Event event = 1;
+}
+
+message CreateEventResponse {
+  Event event = 1;
+}
+
+message UpdateEventRequest {
+  string id = 1;
+  Event event = 2;
+}
+
+message UpdateEventResponse {
+  Event event = 1;
+}
+
+message DeleteEventRequest {
+  string id = 1;
+}
+
+message DeleteEventResponse {}
+
+message ListEventsForDayRequest {
+  string day = 1;
+  string user_id = 2;
+}
+
+message ListEventsForWeekRequest {
+  string week_start = 1;
+  string user_id = 2;
+}
+
+message ListEventsForMonthRequest {
+  string month_start = 1;
+  string user_id = 2;
+}
+
+message ListEventsResponse {
+  repeated Event events = 1;
+}
+
+service CalendarService {
+  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
+  rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse);
+  rpc DeleteEvent(DeleteEventRequest) returns (DeleteEventResponse);
+  rpc ListEventsForDay(ListEventsForDayRequest) returns (ListEventsResponse);
+  rpc ListEventsForWeek(ListEventsForWeekRequest) returns (ListEventsResponse);
+  rpc ListEventsForMonth(ListEventsForMonthRequest) returns (ListEventsResponse);
+}

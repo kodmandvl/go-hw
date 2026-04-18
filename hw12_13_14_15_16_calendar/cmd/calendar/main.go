@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/app"
 	"github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/logger"
+	grpcserver "github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/server/grpc"
 	internalhttp "github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/server/http"
 	"github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/storage"
 	memorystorage "github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/storage/memory"
@@ -33,6 +34,14 @@ func main() {
 		return
 	}
 
+	if err := run(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+// run содержит основную логику, чтобы в main не вызывать os.Exit при активном defer (gocritic exitAfterDefer).
+func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
@@ -48,11 +57,9 @@ func main() {
 			config.DB.DBUsername, config.DB.DBPassword, config.DB.DBHost, config.DB.DBPort, config.DB.DBName)
 		// logg.Info("connectionString: " + connectionString)
 		eventStorage = sqlstorage.New(connectionString)
-		err := eventStorage.Connect(ctx)
-		if err != nil {
+		if err := eventStorage.Connect(ctx); err != nil {
 			logg.Error("connect to DBMS server: %s", err.Error())
-			cancel()
-			os.Exit(1) //nolint:gocritic
+			return fmt.Errorf("connect to DBMS: %w", err)
 		}
 		defer eventStorage.Close()
 	} else {
@@ -64,27 +71,34 @@ func main() {
 
 	calendar := app.New(logg, eventStorage)
 
-	server := internalhttp.NewServer(config.HTTPServer.Host, config.HTTPServer.Port, logg, calendar)
+	// server := internalhttp.NewServer(config.HTTPServer.Host, config.HTTPServer.Port, logg, calendar)
+	grpcAddr := fmt.Sprintf("%s:%d", config.GRPCServer.Host, config.GRPCServer.Port)
+	grpcLis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		logg.Error("grpc listen %s: %s", grpcAddr, err.Error())
+		return fmt.Errorf("grpc listen: %w", err)
+	}
 
+	grpcSrv := grpcserver.NewGRPCServer(logg, calendar)
 	go func() {
-		<-ctx.Done()
-
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
-
-		if err := server.Stop(ctx); err != nil {
-			logg.Error("stop http server: %s", err.Error())
+		logg.Info("grpc listening on %s", grpcLis.Addr().String())
+		if serveErr := grpcSrv.Serve(grpcLis); serveErr != nil {
+			logg.Error("grpc serve: %s", serveErr.Error())
 		}
 	}()
 
-	logg.Info("calendar is running...")
+	httpServer := internalhttp.NewServer(config.HTTPServer.Host, config.HTTPServer.Port, logg, calendar)
+
+	logg.Info("calendar is running (http+gRPC)...")
 	// logg.Error("test error message...")
 	// logg.Warning("test warning message...")
 	// logg.Debug("test debug message...")
 
-	if err := server.Start(ctx); err != nil {
-		logg.Error("start http server: %s", err.Error())
-		cancel()
-		os.Exit(1)
+	if err := httpServer.Run(ctx); err != nil {
+		logg.Error("http server: %s", err.Error())
+		return fmt.Errorf("http server: %w", err)
 	}
+
+	grpcSrv.GracefulStop()
+	return nil
 }
