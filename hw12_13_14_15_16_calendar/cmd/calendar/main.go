@@ -21,8 +21,8 @@ import (
 var configFile string
 
 func init() {
-	// pflag.StringVar(&configFile, "config", "./configs/config.yaml", "Path to configuration file")
-	pflag.StringVarP(&configFile, "config", "c", "./configs/config.yaml", "Path to configuration file")
+	// pflag.StringVar(&configFile, "config", "./configs/calendar_config.yaml", "Path to configuration file")
+	pflag.StringVarP(&configFile, "config", "c", "./configs/calendar_config.yaml", "Path to configuration file")
 }
 
 func main() {
