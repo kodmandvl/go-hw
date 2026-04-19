@@ -52,14 +52,16 @@ func (s *Storage) Close() error {
 }
 
 func (s *Storage) CreateEvent(ctx context.Context, event *storage.Event) error {
+	// Явно передаём id: в миграции есть DEFAULT, но приложение всегда генерирует UUID заранее.
 	const query = `
-		INSERT INTO event (title, date_time, duration, description, user_id, notification_time)
+		INSERT INTO event (id, title, date_time, duration, description, user_id, notification_time)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
 	_, err := s.DB.ExecContext(
 		ctx,
 		query,
+		event.ID,
 		event.Title,
 		event.DateTime,
 		event.Duration,
@@ -119,10 +121,6 @@ func (s *Storage) GetEvent(ctx context.Context, eventID uuid.UUID) (*storage.Eve
 
 	row := s.DB.QueryRowContext(ctx, query, eventID)
 
-	if errors.Is(row.Err(), sql.ErrNoRows) {
-		return nil, storage.ErrEventNotFound
-	}
-
 	var event storage.Event
 	err := row.Scan(
 		&event.ID,
@@ -134,6 +132,9 @@ func (s *Storage) GetEvent(ctx context.Context, eventID uuid.UUID) (*storage.Eve
 		&event.TimeNotification,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, storage.ErrEventNotFound
+		}
 		return nil, err
 	}
 
@@ -151,24 +152,23 @@ func (s *Storage) GetEvents(ctx context.Context) ([]*storage.Event, error) {
 	}
 
 	var events []*storage.Event
-	var event storage.Event
 
 	for rows.Next() {
-		e := &event
+		event := &storage.Event{}
 		err := rows.Scan(
-			&e.ID,
-			&e.Title,
-			&e.DateTime,
-			&e.Duration,
-			&e.Description,
-			&e.UserID,
-			&e.TimeNotification,
+			&event.ID,
+			&event.Title,
+			&event.DateTime,
+			&event.Duration,
+			&event.Description,
+			&event.UserID,
+			&event.TimeNotification,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		events = append(events, e)
+		events = append(events, event)
 	}
 
 	return events, nil
@@ -181,7 +181,7 @@ func (s *Storage) GetEventByDate(ctx context.Context, eventDatetime time.Time) (
 		WHERE date_time = $1
 	`
 
-	row := s.DB.QueryRowContext(ctx, query, eventDatetime.String())
+	row := s.DB.QueryRowContext(ctx, query, eventDatetime)
 
 	var event storage.Event
 
@@ -195,6 +195,9 @@ func (s *Storage) GetEventByDate(ctx context.Context, eventDatetime time.Time) (
 		&event.TimeNotification,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, storage.ErrEventNotFound
+		}
 		return nil, err
 	}
 
@@ -247,7 +250,7 @@ func (s *Storage) GetEventsForDay(ctx context.Context, startOfDay time.Time) ([]
 }
 
 func (s *Storage) GetEventsForWeek(ctx context.Context, startOfWeek time.Time) ([]*storage.Event, error) {
-	return s.getEventsForRange(ctx, startOfWeek, startOfWeek.Add(24*time.Hour))
+	return s.getEventsForRange(ctx, startOfWeek, startOfWeek.AddDate(0, 0, 7))
 }
 
 func (s *Storage) GetEventsForMonth(ctx context.Context, startOfMonth time.Time) ([]*storage.Event, error) {

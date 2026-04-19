@@ -41,20 +41,23 @@ func (s *Storage) CreateEvent(_ context.Context, event *storage.Event) error {
 	return nil
 }
 
-func (s *Storage) UpdateEvent(ctx context.Context, eventID uuid.UUID, event *storage.Event) error {
-	// same id
+func (s *Storage) UpdateEvent(_ context.Context, eventID uuid.UUID, event *storage.Event) error {
+	// Блокируем один раз: вызов GetEventByDate под локом привёл бы к взаимной блокировке.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, found := s.events[eventID]; !found {
 		return storage.ErrEventNotFound
 	}
 
-	// busy time
-	if _, err := s.GetEventByDate(ctx, event.DateTime); err == nil {
-		return storage.ErrEventDateTimeIsBusy
+	for id, ev := range s.events {
+		if id != eventID && ev.DateTime.Equal(event.DateTime) {
+			return storage.ErrEventDateTimeIsBusy
+		}
 	}
 
-	s.events[eventID] = event
+	updated := *event
+	updated.ID = eventID
+	s.events[eventID] = &updated
 
 	return nil
 }
@@ -103,11 +106,11 @@ func (s *Storage) GetEvents(_ context.Context) ([]*storage.Event, error) {
 	return maps.Values(s.events), nil
 }
 
-// general mehtod for getting events by date range.
+// getEventsForRange — полуинтервал [startRange, endRange): начало включаем, конец исключаем.
 func (s *Storage) getEventsForRange(startRange time.Time, endRange time.Time) []*storage.Event {
 	var events []*storage.Event
 	for _, event := range s.events {
-		if event.DateTime.After(startRange.Add(-time.Second)) && event.DateTime.Before(endRange) {
+		if !event.DateTime.Before(startRange) && event.DateTime.Before(endRange) {
 			events = append(events, event)
 		}
 	}
@@ -126,16 +129,12 @@ func (s *Storage) GetEventsForWeek(_ context.Context, startOfWeek time.Time) ([]
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	endRange := startOfWeek.Add(24 * time.Hour)
-
-	return s.getEventsForRange(startOfWeek, endRange.AddDate(0, 0, 7)), nil
+	return s.getEventsForRange(startOfWeek, startOfWeek.AddDate(0, 0, 7)), nil
 }
 
 func (s *Storage) GetEventsForMonth(_ context.Context, startOfMonth time.Time) ([]*storage.Event, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	endRange := startOfMonth.Add(24 * time.Hour)
-
-	return s.getEventsForRange(startOfMonth, endRange.AddDate(0, 1, 0)), nil
+	return s.getEventsForRange(startOfMonth, startOfMonth.AddDate(0, 1, 0)), nil
 }
