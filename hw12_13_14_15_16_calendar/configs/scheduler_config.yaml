@@ -1,0 +1,16 @@
+logger:
+  level: "INFO"
+
+db:
+  dbhost: "localhost"
+  dbport: 5435
+  dbname: "backend"
+  dbusername: "postgres"
+  dbpassword: "password"
+
+rabbit:
+  uri: "amqp://rabbit:password@localhost:5672/"
+  queue: "calendar_notifications"
+
+scheduler:
+  interval_seconds: 60

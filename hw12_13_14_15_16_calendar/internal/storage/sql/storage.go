@@ -51,6 +51,14 @@ func (s *Storage) Close() error {
 	return s.DB.Close()
 }
 
+// notificationTimeFromNull мапит NULL в БД в нулевое time.Time в модели (опциональное напоминание).
+func notificationTimeFromNull(nt sql.NullTime) time.Time {
+	if nt.Valid {
+		return nt.Time
+	}
+	return time.Time{}
+}
+
 func (s *Storage) CreateEvent(ctx context.Context, event *storage.Event) error {
 	// Явно передаём id: в миграции есть DEFAULT, но приложение всегда генерирует UUID заранее.
 	const query = `
@@ -122,6 +130,8 @@ func (s *Storage) GetEvent(ctx context.Context, eventID uuid.UUID) (*storage.Eve
 	row := s.DB.QueryRowContext(ctx, query, eventID)
 
 	var event storage.Event
+	var nt sql.NullTime
+
 	err := row.Scan(
 		&event.ID,
 		&event.Title,
@@ -129,7 +139,7 @@ func (s *Storage) GetEvent(ctx context.Context, eventID uuid.UUID) (*storage.Eve
 		&event.Duration,
 		&event.Description,
 		&event.UserID,
-		&event.TimeNotification,
+		&nt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -137,6 +147,8 @@ func (s *Storage) GetEvent(ctx context.Context, eventID uuid.UUID) (*storage.Eve
 		}
 		return nil, err
 	}
+
+	event.TimeNotification = notificationTimeFromNull(nt)
 
 	return &event, nil
 }
@@ -155,6 +167,8 @@ func (s *Storage) GetEvents(ctx context.Context) ([]*storage.Event, error) {
 
 	for rows.Next() {
 		event := &storage.Event{}
+		var nt sql.NullTime
+
 		err := rows.Scan(
 			&event.ID,
 			&event.Title,
@@ -162,12 +176,13 @@ func (s *Storage) GetEvents(ctx context.Context) ([]*storage.Event, error) {
 			&event.Duration,
 			&event.Description,
 			&event.UserID,
-			&event.TimeNotification,
+			&nt,
 		)
 		if err != nil {
 			return nil, err
 		}
 
+		event.TimeNotification = notificationTimeFromNull(nt)
 		events = append(events, event)
 	}
 
@@ -184,6 +199,7 @@ func (s *Storage) GetEventByDate(ctx context.Context, eventDatetime time.Time) (
 	row := s.DB.QueryRowContext(ctx, query, eventDatetime)
 
 	var event storage.Event
+	var nt sql.NullTime
 
 	err := row.Scan(
 		&event.ID,
@@ -192,7 +208,7 @@ func (s *Storage) GetEventByDate(ctx context.Context, eventDatetime time.Time) (
 		&event.Duration,
 		&event.Description,
 		&event.UserID,
-		&event.TimeNotification,
+		&nt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -200,6 +216,8 @@ func (s *Storage) GetEventByDate(ctx context.Context, eventDatetime time.Time) (
 		}
 		return nil, err
 	}
+
+	event.TimeNotification = notificationTimeFromNull(nt)
 
 	return &event, nil
 }
@@ -227,6 +245,8 @@ func (s *Storage) getEventsForRange(
 	// Iterate on the results of the query and create event objects
 	for rows.Next() {
 		event := &storage.Event{}
+		var nt sql.NullTime
+
 		err := rows.Scan(
 			&event.ID,
 			&event.Title,
@@ -234,11 +254,13 @@ func (s *Storage) getEventsForRange(
 			&event.Duration,
 			&event.Description,
 			&event.UserID,
-			&event.TimeNotification,
+			&nt,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		event.TimeNotification = notificationTimeFromNull(nt)
 		events = append(events, event)
 	}
 

@@ -24,6 +24,7 @@ linters-settings:
           - golang.org/x/exp
           - google.golang.org/grpc
           - google.golang.org/protobuf
+          - github.com/rabbitmq/amqp091-go
           - github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar
       Test:
         files:
@@ -34,6 +35,7 @@ linters-settings:
           - github.com/google/uuid
           - google.golang.org/grpc
           - google.golang.org/protobuf
+          - github.com/rabbitmq/amqp091-go
           - github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar
 issues:
   exclude-rules:
