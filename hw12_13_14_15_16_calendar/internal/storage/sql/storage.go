@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kodmandvl/go-hw/hw12_13_14_15_16_calendar/internal/storage"
-	_ "github.com/lib/pq" // PG
+	"github.com/lib/pq" // PG
 	"github.com/pressly/goose"
 )
 
@@ -60,6 +60,14 @@ func notificationTimeFromNull(nt sql.NullTime) time.Time {
 }
 
 func (s *Storage) CreateEvent(ctx context.Context, event *storage.Event) error {
+	// В SQL-хранилище сохраняем ту же бизнес-логику, что и в memory:
+	// нельзя создать второе событие на тот же date_time.
+	if _, err := s.GetEventByDate(ctx, event.DateTime); err == nil {
+		return storage.ErrEventDateTimeIsBusy
+	} else if !errors.Is(err, storage.ErrEventNotFound) {
+		return err
+	}
+
 	// Явно передаём id: в миграции есть DEFAULT, но приложение всегда генерирует UUID заранее.
 	const query = `
 		INSERT INTO event (id, title, date_time, duration, description, user_id, notification_time)
@@ -78,6 +86,10 @@ func (s *Storage) CreateEvent(ctx context.Context, event *storage.Event) error {
 		event.TimeNotification,
 	)
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return storage.ErrEventAlreadyExists
+		}
 		return err
 	}
 
@@ -85,13 +97,27 @@ func (s *Storage) CreateEvent(ctx context.Context, event *storage.Event) error {
 }
 
 func (s *Storage) UpdateEvent(ctx context.Context, eventID uuid.UUID, event *storage.Event) error {
+	// Проверяем конфликт по времени для других событий (кроме обновляемого).
+	const checkBusyQuery = `
+		SELECT COUNT(1)
+		FROM event
+		WHERE date_time = $1 AND id <> $2
+	`
+	var busyCount int
+	if err := s.DB.QueryRowContext(ctx, checkBusyQuery, event.DateTime, eventID).Scan(&busyCount); err != nil {
+		return err
+	}
+	if busyCount > 0 {
+		return storage.ErrEventDateTimeIsBusy
+	}
+
 	const query = `
 		UPDATE event
 		SET title = $1, date_time = $2, duration = $3, description = $4, user_id = $5, notification_time = $6
 		WHERE id = $7
 	`
 
-	_, err := s.DB.ExecContext(
+	res, err := s.DB.ExecContext(
 		ctx,
 		query,
 		event.Title,
@@ -104,6 +130,14 @@ func (s *Storage) UpdateEvent(ctx context.Context, eventID uuid.UUID, event *sto
 	)
 	if err != nil {
 		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return storage.ErrEventNotFound
 	}
 
 	return nil

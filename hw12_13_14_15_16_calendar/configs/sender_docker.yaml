@@ -2,6 +2,6 @@ logger:
   level: "INFO"
 
 rabbit:
-  uri: "amqp://rabbit:password@localhost:5672/"
+  uri: "amqp://rabbit:password@rabbitmq:5672/"
   queue: "calendar_notifications"
   status_queue: "calendar_notifications_status"

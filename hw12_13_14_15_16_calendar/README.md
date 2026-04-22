@@ -143,3 +143,143 @@ $ podman exec -it postgres-calendar psql -Upostgres -dbackend -c "select id,titl
  3af22993-cac2-45a7-b8ad-e5a8fe2ab0ab | Тест напоминания | 2030-12-31 15:00:00+00 |     3600 |                   |       3 | 
 (4 rows)
 ```
+
+#### Быстрый старт (состояние на момент ДЗ №15)
+
+Для ДЗ №15 добавлены:
+
+- `deployments/docker-compose.yaml` — поднимает PostgreSQL, RabbitMQ, `calendar`, `calendar_scheduler`, `calendar_sender`;
+- `deployments/docker-compose.integration.yaml` — поднимает окружение + контейнер с интеграционными тестами;
+- `make up`, `make down`, `make integration-tests`.
+
+Важно: `make integration-tests` использует Docker Compose, поэтому должен быть запущен Docker daemon.
+
+- 1) Поднять все сервисы в docker:
+
+```bash
+make up
+```
+
+Проверка API:
+
+```bash
+curl -s http://localhost:8888/
+# ожидается: calendar ok
+```
+
+Статус и логи:
+
+```bash
+docker compose -f ./deployments/docker-compose.yaml ps
+docker compose -f ./deployments/docker-compose.yaml logs postgres -f
+docker compose -f ./deployments/docker-compose.yaml logs rabbitmq -f
+docker compose -f ./deployments/docker-compose.yaml logs calendar -f
+docker compose -f ./deployments/docker-compose.yaml logs scheduler -f
+docker compose -f ./deployments/docker-compose.yaml logs sender -f
+```
+
+Проверка создания событий:
+
+```bash
+curl -s -X POST http://localhost:8888/api/events -H 'Content-Type: application/json' -d '{"title":"День рождения","date_time":"2026-04-18T19:30:00Z","duration":7200,"description":"Только раз в году","user_id":"1"}' | jq
+curl -s -X POST http://localhost:8888/api/events -H 'Content-Type: application/json' -d '{"title":"Митап","date_time":"2026-04-18T11:30:00Z","duration":1800,"description":"","user_id":"2"}' | jq
+curl -s -X POST http://localhost:8888/api/events -H 'Content-Type: application/json' -d '{"title":"Встреча","date_time":"2026-04-18T10:00:00Z","duration":3600,"description":"","user_id":"1"}' | jq
+curl -s -X POST http://localhost:8888/api/events \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title":"Тест напоминания",
+    "date_time":"2030-12-31T15:00:00Z",
+    "duration":3600,
+    "description":"",
+    "user_id":"3",
+    "time_notification":"2020-01-01T12:00:00Z"
+  }' | jq
+curl -s -X POST http://localhost:8888/api/events \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "title":"UPD 15",
+    "date_time":"2031-01-01T10:00:00Z",
+    "duration":3600,
+    "description":"№15 с docker-compose",
+    "user_id":"4"
+  }' | jq
+```
+
+Смотрим события:
+
+```bash
+curl -s "http://localhost:8888/api/events/day?day=2026-04-18" | jq
+curl -s "http://localhost:8888/api/events/day?day=2030-12-31" | jq
+curl -s "http://localhost:8888/api/events/day?day=2031-01-01" | jq
+```
+
+Смотрим в БД:
+
+```
+$ docker exec -it calendar-postgres psql -U postgres -d backend -c "select * from event order by date_time, user_id;"
+                  id                  |      title       |       date_time        | duration |     description      | user_id | notification_time |         created_at         
+--------------------------------------+------------------+------------------------+----------+----------------------+---------+-------------------+----------------------------
+ db514eb7-d32d-4643-a0a5-c1b61dd30b8c | Встреча          | 2026-04-18 10:00:00+00 |     3600 |                      |       1 |                   | 2026-04-22 22:34:42.357188
+ a0f001d9-0889-4843-ab7e-10d8ed9608c0 | Митап            | 2026-04-18 11:30:00+00 |     1800 |                      |       2 |                   | 2026-04-22 22:34:42.326307
+ bae7829b-1f67-42ef-817c-ba9b98ee2532 | День рождения    | 2026-04-18 19:30:00+00 |     7200 | Только раз в году    |       1 |                   | 2026-04-22 22:33:53.806586
+ ad7822e6-b7be-4f7e-b5fe-ff547c5e494c | Тест напоминания | 2030-12-31 15:00:00+00 |     3600 |                      |       3 |                   | 2026-04-22 22:35:18.087817
+ aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa | UPD 15           | 2031-01-01 10:00:00+00 |     3600 | №15 с docker-compose |       4 |                   | 2026-04-22 22:35:25.796707
+(5 rows)
+```
+
+Смотрим статус очередей :
+
+```
+$ docker exec -it calendar-rabbitmq rabbitmqctl list_queues name messages messages_ready messages_unacknowledged
+Timeout: 60.0 seconds ...
+Listing queues for vhost / ...
+name    messages        messages_ready  messages_unacknowledged
+calendar_notifications_status   5       5       0
+calendar_notifications  0       0       0
+```
+
+Посмотреть сообщения из новой очереди calendar_notifications_status:
+
+```bash
+curl -s -u rabbit:password -X POST "http://localhost:15672/api/queues/%2F/calendar_notifications_status/get" \
+  -H "Content-Type: application/json" \
+  -d '{"count":5,"ackmode":"ack_requeue_true","encoding":"auto","truncate":50000}' | jq
+```
+
+- 2) Остановить и удалить окружение:
+
+```bash
+make down
+```
+
+- 3) Запустить интеграционные тесты:
+
+```bash
+make integration-tests
+docker compose -f ./deployments/docker-compose.integration.yaml ps | egrep -v '(^NAME)' | wc -l
+```
+
+Команда:
+
+- поднимает окружение из `deployments/docker-compose.integration.yaml`,
+- запускает тесты из `tests/integration`,
+- удаляет окружение за собой (через `down -v --remove-orphans`).
+
+Сценарии интеграционных тестов:
+
+- создание события + проверка бизнес-ошибки (конфликт),
+- листинг событий на день/неделю/месяц,
+- доставка уведомления: scheduler -> rabbitmq -> sender -> очередь статусов `calendar_notifications_status`.
+
+- 4) Сборка образов и пуш в реджистри (на будущее для ДЗ №16):
+
+```bash
+# Сборка образов:
+make build-img
+docker images | grep kodmandvl[/]calendar
+# Пуш:
+docker push docker.io/kodmandvl/calendar-api:develop
+docker push docker.io/kodmandvl/calendar-scheduler:develop
+docker push docker.io/kodmandvl/calendar-sender:develop
+```

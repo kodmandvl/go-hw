@@ -1,13 +1,20 @@
 BIN := "./bin/calendar"
 BIN_SCHEDULER := "./bin/calendar_scheduler"
 BIN_SENDER := "./bin/calendar_sender"
-DOCKER_IMG="calendar:develop"
-
+DOCKER_IMG_CALENDAR ?= calendar-api:develop
+DOCKER_IMG_SCHEDULER ?= calendar-scheduler:develop
+DOCKER_IMG_SENDER ?= calendar-sender:develop
+DOCKER_LOGIN ?= kodmandvl
+DOCKER_REGISTRY ?= docker.io
+DOCKER_PROJECT ?= $(DOCKER_REGISTRY)/$(DOCKER_LOGIN)
 GIT_HASH := $(shell git log --format="%h" -n 1)
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
 
 # Software to run containers
 CONTAINER_RUNNER ?= docker # docker|podman
+COMPOSE ?= $(CONTAINER_RUNNER) compose
+COMPOSE_FILE ?= ./deployments/docker-compose.yaml
+COMPOSE_FILE_IT ?= ./deployments/docker-compose.integration.yaml
 
 #Postrges
 POSTGRES_USER ?= postgres
@@ -73,14 +80,26 @@ run-scheduler: build-scheduler
 run-sender: build-sender
 	$(BIN_SENDER) --config ./configs/sender_config.yaml
 
-build-img:
-	docker build \
-		--build-arg=LDFLAGS="$(LDFLAGS)" \
-		-t $(DOCKER_IMG) \
-		-f build/Dockerfile .
+build-img-calendar:
+	$(CONTAINER_RUNNER) build \
+		-t $(DOCKER_PROJECT)/$(DOCKER_IMG_CALENDAR) \
+		-f build/Dockerfile.calendar .
 
-run-img: build-img
-	docker run $(DOCKER_IMG)
+build-img-scheduler:
+	$(CONTAINER_RUNNER) build \
+		-t $(DOCKER_PROJECT)/$(DOCKER_IMG_SCHEDULER) \
+		-f build/Dockerfile.scheduler .
+
+build-img-sender:
+	$(CONTAINER_RUNNER) build \
+		-t $(DOCKER_PROJECT)/$(DOCKER_IMG_SENDER) \
+		-f build/Dockerfile.sender .
+
+build-img: build-img-calendar build-img-scheduler build-img-sender
+
+# run-img - только контейнер с календарём
+run-img: build-img-calendar
+	$(CONTAINER_RUNNER) run $(DOCKER_IMG_CALENDAR)
 
 version: build-calendar
 	$(BIN) version
@@ -107,4 +126,17 @@ lint: install-lint-deps
 generate:
 	go generate ./...
 
-.PHONY: build run-postgres run-rabbit build-calendar build-scheduler build-sender build run run-calendar run-scheduler run-sender build-img run-img version version-calendar version-scheduler version-sender test install-lint-deps lint generate
+up:
+	$(COMPOSE) -f $(COMPOSE_FILE) up -d --build
+
+down:
+	$(COMPOSE) -f $(COMPOSE_FILE) down -v --remove-orphans
+
+integration-tests:
+	@set -e; \
+	trap '$(COMPOSE) -f $(COMPOSE_FILE_IT) down -v --remove-orphans' EXIT; \
+	$(COMPOSE) -f $(COMPOSE_FILE_IT) up -d --build postgres rabbitmq calendar scheduler sender; \
+	$(COMPOSE) -f $(COMPOSE_FILE_IT) build integration-tests; \
+	$(COMPOSE) -f $(COMPOSE_FILE_IT) run --rm integration-tests
+
+.PHONY: build run-postgres run-rabbit build-calendar build-scheduler build-sender build run run-calendar run-scheduler run-sender build-img build-img-calendar build-img-scheduler build-img-sender run-img version version-calendar version-scheduler version-sender test install-lint-deps lint generate up down integration-tests

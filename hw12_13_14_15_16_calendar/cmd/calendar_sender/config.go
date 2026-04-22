@@ -18,8 +18,9 @@ type LoggerConf struct {
 }
 
 type RabbitConf struct {
-	URI   string `mapstructure:"uri"`
-	Queue string `mapstructure:"queue"`
+	URI         string `mapstructure:"uri"`
+	Queue       string `mapstructure:"queue"`
+	StatusQueue string `mapstructure:"status_queue"` // Очередь для статусов доставки уведомлений (ДЗ №15).
 }
 
 func NewConfig() *Config {
