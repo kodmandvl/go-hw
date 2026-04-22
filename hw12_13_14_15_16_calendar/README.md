@@ -283,3 +283,5 @@ docker push docker.io/kodmandvl/calendar-api:develop
 docker push docker.io/kodmandvl/calendar-scheduler:develop
 docker push docker.io/kodmandvl/calendar-sender:develop
 ```
+
+Указанные образы можно увидеть здесь: https://hub.docker.com/search?q=kodmandvl&sort=updated_at&order=desc
