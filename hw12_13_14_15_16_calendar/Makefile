@@ -99,7 +99,7 @@ build-img: build-img-calendar build-img-scheduler build-img-sender
 
 # run-img - только контейнер с календарём
 run-img: build-img-calendar
-	$(CONTAINER_RUNNER) run $(DOCKER_IMG_CALENDAR)
+	$(CONTAINER_RUNNER) run $(DOCKER_PROJECT)/$(DOCKER_IMG_CALENDAR)
 
 version: build-calendar
 	$(BIN) version
