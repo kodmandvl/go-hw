@@ -1,0 +1,47 @@
+# Планировщик: внешние Postgres и RabbitMQ (values.database / values.rabbitmq).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-calendar-scheduler
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: calendar-scheduler
+spec:
+  replicas: {{ .Values.scheduler.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: calendar-scheduler
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: calendar-scheduler
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: calendar-scheduler
+          image: "{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag }}"
+          imagePullPolicy: {{ .Values.scheduler.image.pullPolicy }}
+          ports:
+            - name: tcp
+              containerPort: {{ .Values.scheduler.service.port }}
+          command:
+            - /app/calendar_scheduler
+            - --config
+            - /app/configs/scheduler_docker.yaml
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/configs
+          livenessProbe:
+            exec:
+              command:
+                - /bin/true
+            periodSeconds: 30
+          {{- with .Values.scheduler.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: app-config
+          configMap:
+            name: {{ .Release.Name }}-app-config
