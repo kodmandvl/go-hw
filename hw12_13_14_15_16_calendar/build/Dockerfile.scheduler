@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+# Сборка бинарника планировщика.
+FROM golang:1.23 AS build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/calendar_scheduler ./cmd/calendar_scheduler
+
+FROM alpine:3.20
+
+WORKDIR /app
+COPY --from=build /out/calendar_scheduler /app/calendar_scheduler
+COPY ./configs/scheduler_docker.yaml /app/configs/scheduler_docker.yaml
+# SQL-миграции нужны в runtime-контейнере: storage.Connect() вызывает goose.Up("migrations").
+COPY ./migrations /app/migrations
+
+CMD ["/app/calendar_scheduler", "--config", "/app/configs/scheduler_docker.yaml"]

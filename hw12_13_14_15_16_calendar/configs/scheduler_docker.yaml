@@ -1,0 +1,17 @@
+logger:
+  level: "INFO"
+
+db:
+  dbhost: "postgres"
+  dbport: 5432
+  dbname: "backend"
+  dbusername: "postgres"
+  dbpassword: "password"
+
+rabbit:
+  uri: "amqp://rabbit:password@rabbitmq:5672/"
+  queue: "calendar_notifications"
+
+scheduler:
+  # Для docker-сценария и integration-тестов ускоряем цикл планировщика.
+  interval_seconds: 2

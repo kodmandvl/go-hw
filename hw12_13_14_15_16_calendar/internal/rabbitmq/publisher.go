@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"context"
 	"fmt"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -16,9 +17,9 @@ type publisher struct {
 
 // NewPublisher подключается к RabbitMQ, объявляет durable-очередь и возвращает объект для публикации.
 func NewPublisher(uri, queueName string) (Publisher, error) {
-	conn, err := amqp.Dial(uri)
+	conn, err := dialWithRetry(uri)
 	if err != nil {
-		return nil, fmt.Errorf("rabbitmq dial: %w", err)
+		return nil, err
 	}
 
 	ch, err := conn.Channel()
@@ -39,6 +40,26 @@ func NewPublisher(uri, queueName string) (Publisher, error) {
 		channel: ch,
 		queue:   queueName,
 	}, nil
+}
+
+// dialWithRetry даёт RabbitMQ время на старт после docker-compose up.
+func dialWithRetry(uri string) (*amqp.Connection, error) {
+	const (
+		maxAttempts = 20
+		retryDelay  = time.Second
+	)
+
+	var err error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		var conn *amqp.Connection
+		conn, err = amqp.Dial(uri)
+		if err == nil {
+			return conn, nil
+		}
+		time.Sleep(retryDelay)
+	}
+
+	return nil, fmt.Errorf("rabbitmq dial: %w", err)
 }
 
 func (p *publisher) Publish(ctx context.Context, body []byte) error {

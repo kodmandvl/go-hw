@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+# Сборка бинарника API отдельным stage, чтобы runtime-образ был компактным.
+FROM golang:1.23 AS build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/calendar ./cmd/calendar
+
+# Минимальный runtime-слой.
+FROM alpine:3.20
+
+WORKDIR /app
+COPY --from=build /out/calendar /app/calendar
+COPY ./configs/calendar_docker.yaml /app/configs/calendar_docker.yaml
+# SQL-миграции нужны в runtime-контейнере: storage.Connect() вызывает goose.Up("migrations").
+COPY ./migrations /app/migrations
+
+EXPOSE 8080 50051
+
+# Явно задаём путь к docker-конфигу (DB=postgres, Rabbit=rabbitmq, HTTP=0.0.0.0).
+CMD ["/app/calendar", "--config", "/app/configs/calendar_docker.yaml"]

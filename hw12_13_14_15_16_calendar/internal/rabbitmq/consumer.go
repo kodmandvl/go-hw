@@ -16,9 +16,9 @@ type consumer struct {
 
 // NewConsumer подключается к RabbitMQ и объявляет ту же очередь, что и планировщик (имя из конфига).
 func NewConsumer(uri, queueName string) (Consumer, error) {
-	conn, err := amqp.Dial(uri)
+	conn, err := dialWithRetry(uri)
 	if err != nil {
-		return nil, fmt.Errorf("rabbitmq dial: %w", err)
+		return nil, err
 	}
 
 	ch, err := conn.Channel()
