@@ -1,0 +1,67 @@
+# Дефолтные значения для Helm chart календаря (ДЗ №16).
+# Postgres и RabbitMQ в chart не входят — кластер должен уже предоставлять эти сервисы либо подразумевается, что это внешние сервисы за пределами кластера.
+# Образы трёх микросервисов (см. `make build`).
+
+api:
+  replicaCount: 1
+  image:
+    repository: docker.io/kodmandvl/calendar-api
+    tag: develop
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8080
+    grpcPort: 50051
+  resources: {}
+
+scheduler:
+  replicaCount: 1
+  image:
+    repository: docker.io/kodmandvl/calendar-scheduler
+    tag: develop
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: {}
+
+sender:
+  replicaCount: 1
+  image:
+    repository: docker.io/kodmandvl/calendar-sender
+    tag: develop
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: {}
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: calendar.172.17.255.1.nip.io
+  annotations:
+    cert-manager.io/cluster-issuer: myca
+  tls:
+  - hosts:
+    - calendar.172.17.255.1.nip.io
+    secretName: calendar-tls
+
+# Подключение к уже развёрнутому PostgreSQL (FQDN сервиса в кластере).
+database:
+  host: postgresql-server.postgres.svc.cluster.local
+  port: 5432
+  name: backend
+  username: backend
+  password: password
+
+# Подключение к уже развёрнутому RabbitMQ (FQDN + учётные данные для AMQP URI).
+rabbitmq:
+  host: rabbitmq-server.rabbitmq.svc.cluster.local
+  port: 5672
+  username: rabbit
+  password: password
+
+schedulerConfig:
+  # Чтобы успеть понаблюдать за изменениями в PostgreSQL (столбец notification_time):
+  intervalSeconds: 60

@@ -1,0 +1,17 @@
+# Сервис для планировщика: у процесса нет HTTP, порт используется только для соответствия модели Service+Deployment.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-calendar-scheduler
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: calendar-scheduler
+spec:
+  type: {{ .Values.scheduler.service.type }}
+  ports:
+    - name: tcp
+      port: {{ .Values.scheduler.service.port }}
+      targetPort: tcp
+  selector:
+    app.kubernetes.io/component: calendar-scheduler
+    app.kubernetes.io/instance: {{ .Release.Name }}

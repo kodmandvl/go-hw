@@ -16,6 +16,9 @@ COMPOSE ?= $(CONTAINER_RUNNER) compose
 COMPOSE_FILE ?= ./deployments/docker-compose.yaml
 COMPOSE_FILE_IT ?= ./deployments/docker-compose.integration.yaml
 
+# Helm chart (ДЗ №16)
+HELM_CHART ?= ./calendar-chart
+
 #Postrges
 POSTGRES_USER ?= postgres
 POSTGRES_PASSWORD ?= password
@@ -99,7 +102,7 @@ build-img: build-img-calendar build-img-scheduler build-img-sender
 
 # run-img - только контейнер с календарём
 run-img: build-img-calendar
-	$(CONTAINER_RUNNER) run $(DOCKER_PROJECT)/$(DOCKER_IMG_CALENDAR)
+	$(CONTAINER_RUNNER) run $(DOCKER_IMG_CALENDAR)
 
 version: build-calendar
 	$(BIN) version
@@ -139,4 +142,13 @@ integration-tests:
 	$(COMPOSE) -f $(COMPOSE_FILE_IT) build integration-tests; \
 	$(COMPOSE) -f $(COMPOSE_FILE_IT) run --rm integration-tests
 
-.PHONY: build run-postgres run-rabbit build-calendar build-scheduler build-sender build run run-calendar run-scheduler run-sender build-img build-img-calendar build-img-scheduler build-img-sender run-img version version-calendar version-scheduler version-sender test install-lint-deps lint generate up down integration-tests
+helm-lint:
+	helm lint $(HELM_CHART)
+
+helm-template:
+	helm template calendar-test $(HELM_CHART) >/dev/null
+
+helm-package:
+	helm package $(HELM_CHART) -d ./artifacts
+
+.PHONY: build run-postgres run-rabbit build-calendar build-scheduler build-sender build run run-calendar run-scheduler run-sender build-img build-img-calendar build-img-scheduler build-img-sender run-img version version-calendar version-scheduler version-sender test install-lint-deps lint generate up down integration-tests helm-lint helm-template helm-package

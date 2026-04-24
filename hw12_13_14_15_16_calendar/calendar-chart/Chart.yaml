@@ -1,0 +1,8 @@
+# Helm chart для ДЗ №16: шаблонизация Kubernetes-манифестов календаря (API, scheduler, sender),
+# плюс опциональные Postgres и RabbitMQ для локального/minikube-кластера.
+apiVersion: v2
+name: calendar-chart
+description: Calendar application (API, scheduler, sender) for Kubernetes
+type: application
+version: 0.1.0
+appVersion: "0.16.0"

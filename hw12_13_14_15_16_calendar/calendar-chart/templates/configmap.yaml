@@ -1,0 +1,49 @@
+# ConfigMap с YAML-конфигами: хосты БД и RabbitMQ задаются только через values (внешние сервисы кластера).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-app-config
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+data:
+  calendar_docker.yaml: |
+    logger:
+      level: "INFO"
+      path: "./logs/calendar.log"
+    storage:
+      type: "sql"
+    http:
+      host: "0.0.0.0"
+      port: 8080
+    grpc:
+      host: "0.0.0.0"
+      port: 50051
+    db:
+      dbhost: {{ .Values.database.host | quote }}
+      dbport: {{ .Values.database.port }}
+      dbname: {{ .Values.database.name | quote }}
+      dbusername: {{ .Values.database.username | quote }}
+      dbpassword: {{ .Values.database.password | quote }}
+
+  scheduler_docker.yaml: |
+    logger:
+      level: "INFO"
+    db:
+      dbhost: {{ .Values.database.host | quote }}
+      dbport: {{ .Values.database.port }}
+      dbname: {{ .Values.database.name | quote }}
+      dbusername: {{ .Values.database.username | quote }}
+      dbpassword: {{ .Values.database.password | quote }}
+    rabbit:
+      uri: "amqp://{{ .Values.rabbitmq.username }}:{{ .Values.rabbitmq.password }}@{{ .Values.rabbitmq.host }}:{{ .Values.rabbitmq.port }}/"
+      queue: "calendar_notifications"
+    scheduler:
+      interval_seconds: {{ .Values.schedulerConfig.intervalSeconds | int }}
+
+  sender_docker.yaml: |
+    logger:
+      level: "INFO"
+    rabbit:
+      uri: "amqp://{{ .Values.rabbitmq.username }}:{{ .Values.rabbitmq.password }}@{{ .Values.rabbitmq.host }}:{{ .Values.rabbitmq.port }}/"
+      queue: "calendar_notifications"
+      status_queue: "calendar_notifications_status"
